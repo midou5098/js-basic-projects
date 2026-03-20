@@ -1,0 +1,21 @@
+body {
+            font-family: system-ui;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+}
+.message {
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 8px;
+            background: #f0f0f0;
+        }
+.message.me {
+            background: #007aff;
+            color: white;
+            text-align: right;
+        }
+.message.ai {
+            text-align: left;
+            background: #e5e5ea;
+            color: black;}
