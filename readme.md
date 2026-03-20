@@ -1,1 +1,1 @@
-react learning project learning to manage api and build custom interfaces
+javascript learning projects to learn managing api and modifying custom interfaces
