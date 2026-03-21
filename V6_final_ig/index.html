@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project 7: Auto-Scroll Chat</title>
+    <script src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            font-family: system-ui;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 16px;
+            height: 400px;
+            overflow-y: auto;
+            background: #fafafa;
+            margin-bottom: 20px;
+        }
+        .message {
+            padding: 10px;
+            margin: 4px 0;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+        .message.me {
+            background: #007aff;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        .message.ai {
+            background: #e5e5ea;
+            color: black;
+        }
+        .message.loading {
+            background: #e5e5ea;
+            color: #666;
+            font-style: italic;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+        input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        button {
+            padding: 12px 24px;
+            background: #007aff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 10px;
+            color: #666;
+            font-size: 14px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        function App() {
+            const [messages, setMessages] = React.useState([
+                { id: 1, text: "This is the first message. Scroll down to see new ones!", sender: "ai" },
+                { id: 2, text: "Here's a second message to fill space.", sender: "ai" },
+                { id: 3, text: "And a third. Now send a message and watch it auto-scroll!", sender: "ai" },
+            ]);
+            const [input, setInput] = React.useState("");
+            const [isLoading, setIsLoading] = React.useState(false);
+            
+            // Create a ref to the bottom of the chat
+            const messagesEndRef = React.useRef(null);
+            
+            // Auto-scroll function
+            const scrollToBottom = () => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            };
+            
+            // Scroll whenever messages change
+            React.useEffect(() => {
+                scrollToBottom();
+            }, [messages]);
+            
+            const sendMessage = async () => {
+                if (input.trim() === "") return;
+                
+                const userInput = input;
+                
+                // Add user message
+                const userMessage = {
+                    id: Date.now(),
+                    text: userInput,
+                    sender: "me"
+                };
+                setMessages(prev => [...prev, userMessage]);
+                setInput("");
+                
+                // Show loading
+                setIsLoading(true);
+                
+                // Simulate API call (replace with real fetch later)
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Add AI response
+                const aiMessage = {
+                    id: Date.now() + 1,
+                    text: `You said: "${userInput}". The chat auto-scrolled to show this message!`,
+                    sender: "ai"
+                };
+                setMessages(prev => [...prev, aiMessage]);
+                
+                setIsLoading(false);
+            };
+            
+            return (
+                <div>
+                    <h2>📱 Auto-Scroll Chat</h2>
+                    <p style={{color: '#666', marginBottom: '20px'}}>
+                        New messages automatically scroll into view
+                    </p>
+                    
+                    <div className="chat-container">
+                        {messages.map((msg) => (
+                            <div key={msg.id} className={`message ${msg.sender}`}>
+                                {msg.text}
+                            </div>
+                        ))}
+                        
+                        {isLoading && (
+                            <div className="message ai loading">
+                                AI is thinking...
+                            </div>
+                        )}
+                        
+                        {/* Invisible element at the bottom */}
+                        <div ref={messagesEndRef} />
+                    </div>
+                    
+                    <div className="input-area">
+                        <input 
+                            type="text" 
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                            placeholder="Type a message..."
+                            disabled={isLoading}
+                        />
+                        <button onClick={sendMessage} disabled={isLoading}>
+                            {isLoading ? "Sending..." : "Send"}
+                        </button>
+                    </div>
+                    
+                    <div className="status">
+                        {isLoading ? "🤔 Thinking..." : "✅ Auto-scroll enabled"}
+                    </div>
+                </div>
+            );
+        }
+        
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>

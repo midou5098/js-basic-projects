@@ -14,6 +14,8 @@ body {
     min-height: 400px;
     margin-bottom: 20px;
     background: #fafafa;
+    overflow-y: auto;
+    max-height: 500px;
 }
 .message {
     padding: 10px;
@@ -31,6 +33,11 @@ body {
     background: #e5e5ea;
     color: black;
 }
+.message.error {
+    background: #ffe5e5;
+    color: #d32f2f;
+    border: 1px solid #ffcdd2;
+}
 .message.loading {
     background: #e5e5ea;
     color: #666;
@@ -39,6 +46,7 @@ body {
 .input-area {
     display: flex;
     gap: 10px;
+    margin-top: 20px;
 }
 input {
     flex: 1;
@@ -64,4 +72,13 @@ button:disabled {
     margin-top: 10px;
     color: #666;
     font-size: 14px;
+    text-align: center;
+}
+.api-info {
+    background: #f0f0f0;
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 20px;
+    font-size: 12px;
+    color: #666;
 }

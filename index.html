@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cozy AI Chat</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #ddd0c0;
+      --card:      #ece0d0;
+      --border:    #cfc0b0;
+      --primary:   #8b6347;
+      --primary-fg:#fdf8f4;
+      --accent:    #d4c4b0;
+      --fg:        #3d2e22;
+      --muted:     #7a6a5a;
+      --destructive: #c0392b;
+      --radius:    0.75rem;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Header */
+    header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 18px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .logo {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--primary); display: flex; align-items: center;
+      justify-content: center; color: var(--primary-fg); font-size: 16px;
+    }
+    .header-title { font-size: 14px; font-weight: 600; line-height: 1.2; }
+    .header-sub   { font-size: 11px; color: var(--muted); }
+    .header-right { display: flex; align-items: center; gap: 8px; }
+    .badge {
+      display: flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 999px;
+      background: var(--accent); border: 1px solid var(--border);
+      font-size: 11px; color: var(--fg);
+    }
+    .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #4caf50; animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    #clear-btn {
+      display: none; background: none; border: none;
+      color: var(--muted); font-size: 12px; cursor: pointer;
+      padding: 4px 8px; border-radius: 6px; transition: color .15s;
+    }
+    #clear-btn:hover { color: var(--fg); }
+
+    /* Messages */
+    #messages {
+      flex: 1; overflow-y: auto; padding: 16px;
+      scroll-behavior: smooth;
+    }
+    #messages::-webkit-scrollbar { width: 5px; }
+    #messages::-webkit-scrollbar-track { background: transparent; }
+    #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .msg-row {
+      display: flex; gap: 10px; align-items: flex-end;
+      margin-bottom: 14px;
+      animation: fadeUp .22s ease-out;
+    }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+    .msg-row.user { flex-direction: row-reverse; }
+
+    .avatar {
+      flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,.1);
+    }
+    .avatar.bot  { background: var(--accent); border: 1px solid var(--border); }
+    .avatar.user { background: var(--primary); color: var(--primary-fg); }
+
+    .bubble-wrap { display: flex; flex-direction: column; max-width: 72%; }
+    .msg-row.user .bubble-wrap { align-items: flex-end; }
+
+    .bubble {
+      padding: 10px 14px; border-radius: 18px;
+      font-size: 13.5px; line-height: 1.55;
+      white-space: pre-wrap; word-break: break-word;
+      box-shadow: 0 1px 3px rgba(0,0,0,.07);
+    }
+    .bubble.bot  {
+      background: var(--card); border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+    .bubble.user {
+      background: var(--primary); color: var(--primary-fg);
+      border-bottom-right-radius: 4px;
+    }
+    .ts { font-size: 10px; color: var(--muted); margin-top: 3px; padding: 0 2px; }
+
+    /* Typing indicator */
+    #typing {
+      display: none; gap: 10px; align-items: flex-end;
+      margin-bottom: 14px;
+    }
+    .typing-bubble {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 18px; border-bottom-left-radius: 4px;
+      padding: 10px 14px; display: flex; gap: 4px; align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,.07);
+    }
+    .dot-anim {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--muted); animation: bounce .6s infinite;
+    }
+    .dot-anim:nth-child(2) { animation-delay: .15s; }
+    .dot-anim:nth-child(3) { animation-delay: .3s; }
+    @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+
+    /* Empty state */
+    #empty {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; height: 100%; gap: 28px; padding: 24px;
+      animation: fadeUp .4s ease-out;
+    }
+    .empty-icon {
+      width: 60px; height: 60px; border-radius: 16px;
+      background: var(--accent); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    }
+    .empty-title { font-size: 18px; font-weight: 600; }
+    .empty-sub   { font-size: 13px; color: var(--muted); text-align: center; max-width: 280px; }
+    .suggestions {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px; width: 100%; max-width: 480px;
+    }
+    @media(max-width:480px){ .suggestions { grid-template-columns: 1fr; } }
+    .suggestion {
+      text-align: left; padding: 10px 14px; border-radius: 12px;
+      background: var(--card); border: 1px solid var(--border);
+      font-size: 12.5px; color: var(--fg); cursor: pointer;
+      transition: background .15s, border-color .15s;
+      box-shadow: 0 1px 3px rgba(0,0,0,.05);
+    }
+    .suggestion:hover { background: var(--accent); border-color: var(--primary); }
+
+    /* Error banner */
+    #error-banner {
+      display: none; flex-shrink: 0;
+      margin: 0 16px 8px; padding: 8px 14px;
+      background: rgba(192,57,43,.1); border: 1px solid rgba(192,57,43,.3);
+      color: var(--destructive); border-radius: 10px;
+      font-size: 12px;
+      align-items: center; justify-content: space-between; gap: 10px;
+    }
+    #error-banner.visible { display: flex; }
+    #error-close { background: none; border: none; cursor: pointer; color: inherit; font-size: 14px; }
+
+    /* Input area */
+    .input-area {
+      flex-shrink: 0; padding: 8px 16px 18px;
+      background: rgba(221,208,192,.85); backdrop-filter: blur(6px);
+    }
+    .input-box {
+      max-width: 640px; margin: 0 auto;
+      display: flex; align-items: flex-end; gap: 8px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 18px; padding: 8px 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.07);
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .input-box:focus-within {
+      border-color: var(--primary);
+      box-shadow: 0 2px 12px rgba(139,99,71,.18);
+    }
+    #input {
+      flex: 1; resize: none; border: none; background: transparent;
+      font-size: 13.5px; line-height: 1.5; outline: none;
+      color: var(--fg); min-height: 34px; max-height: 140px;
+      font-family: inherit; padding: 4px 2px;
+    }
+    #input::placeholder { color: var(--muted); opacity: .7; }
+    #send-btn {
+      flex-shrink: 0; width: 34px; height: 34px; border-radius: 10px;
+      background: var(--primary); color: var(--primary-fg);
+      border: none; cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+      transition: background .15s, opacity .15s;
+      box-shadow: 0 1px 4px rgba(0,0,0,.12);
+    }
+    #send-btn:disabled { opacity: .4; cursor: default; }
+    #send-btn:not(:disabled):hover { background: #7a5540; }
+    .hint {
+      text-align: center; font-size: 10.5px; color: var(--muted);
+      margin-top: 6px; opacity: .7;
+    }
+    kbd {
+      padding: 1px 4px; border-radius: 4px;
+      background: var(--accent); font-family: monospace; font-size: 10px;
+    }
+
+    /* Config modal */
+    #cfg-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 18px; padding: 2px 6px;
+      border-radius: 6px; transition: color .15s;
+    }
+    #cfg-btn:hover { color: var(--fg); }
+    #modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.35); z-index: 100;
+      align-items: center; justify-content: center;
+    }
+    #modal-overlay.open { display: flex; }
+    #modal {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 24px; width: 90%; max-width: 420px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18);
+    }
+    #modal h2 { font-size: 15px; font-weight: 600; margin-bottom: 16px; }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+    .field input {
+      width: 100%; padding: 8px 12px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--fg); font-size: 13px; outline: none;
+      transition: border-color .15s;
+    }
+    .field input:focus { border-color: var(--primary); }
+    .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+    .btn-cancel {
+      padding: 7px 16px; border-radius: 8px; border: 1px solid var(--border);
+      background: none; color: var(--muted); cursor: pointer; font-size: 13px;
+      transition: background .15s;
+    }
+    .btn-cancel:hover { background: var(--accent); }
+    .btn-save {
+      padding: 7px 16px; border-radius: 8px; border: none;
+      background: var(--primary); color: var(--primary-fg);
+      cursor: pointer; font-size: 13px; transition: background .15s;
+    }
+    .btn-save:hover { background: #7a5540; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="header-left">
+    <div class="logo">✦</div>
+    <div>
+      <div class="header-title">Cozy AI Chat</div>
+      <div class="header-sub">Local · Private · Yours</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <button id="clear-btn">↺ New chat</button>
+    <button id="cfg-btn" title="Configure endpoint">⚙</button>
+    <div class="badge"><span class="dot"></span>Local</div>
+  </div>
+</header>
+
+<!-- Messages -->
+<div id="messages">
+  <div id="empty">
+    <div class="empty-icon">☕</div>
+    <div class="empty-title">Good to see you</div>
+    <div class="empty-sub">Start a conversation. Everything stays just between us — nothing is saved when you leave.</div>
+    <div class="suggestions">
+      <button class="suggestion" onclick="useSuggestion(this)">Tell me something interesting about the universe 🌌</button>
+      <button class="suggestion" onclick="useSuggestion(this)">Help me write a short poem about autumn 🍂</button>
+      <button class="suggestion" onclick="useSuggestion(this)">What's a good recipe for a cozy evening? 🍵</button>
+      <button class="suggestion" onclick="useSuggestion(this)">Explain quantum computing simply 🔬</button>
+    </div>
+  </div>
+  <div id="typing" class="msg-row">
+    <div class="avatar bot">🤖</div>
+    <div class="typing-bubble">
+      <div class="dot-anim"></div>
+      <div class="dot-anim"></div>
+      <div class="dot-anim"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Error banner -->
+<div id="error-banner">
+  <span id="error-text"></span>
+  <button id="error-close" onclick="hideError()">✕</button>
+</div>
+
+<!-- Input -->
+<div class="input-area">
+  <div class="input-box">
+    <textarea id="input" rows="1" placeholder="Say something warm…"></textarea>
+    <button id="send-btn" disabled title="Send">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    </button>
+  </div>
+  <div class="hint">
+    Press <kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for new line · Nothing is saved
+  </div>
+</div>
+
+<!-- Config modal -->
+<div id="modal-overlay">
+  <div id="modal">
+    <h2>⚙ Configure AI Endpoint</h2>
+    <div class="field">
+      <label>API URL</label>
+      <input id="cfg-url" type="text" placeholder="http://localhost:11434/api/chat" />
+    </div>
+    <div class="field">
+      <label>Model name</label>
+      <input id="cfg-model" type="text" placeholder="llama3" />
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveConfig()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Config — saved in localStorage so it persists across page opens
+  let AI_URL   = localStorage.getItem('ai_url')   || 'http://localhost:11434/api/chat';
+  let AI_MODEL = localStorage.getItem('ai_model') || 'llama3';
+
+  // State
+  let history = [];
+  let loading = false;
+
+  // DOM refs
+  const messagesEl  = document.getElementById('messages');
+  const emptyEl     = document.getElementById('empty');
+  const typingEl    = document.getElementById('typing');
+  const inputEl     = document.getElementById('input');
+  const sendBtn     = document.getElementById('send-btn');
+  const clearBtn    = document.getElementById('clear-btn');
+  const errorBanner = document.getElementById('error-banner');
+  const errorText   = document.getElementById('error-text');
+
+  function fmtTime(d) {
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  function scrollBottom() {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+  function showError(msg) {
+    errorText.textContent = msg;
+    errorBanner.classList.add('visible');
+  }
+  function hideError() {
+    errorBanner.classList.remove('visible');
+  }
+
+  function appendMessage(role, content) {
+    const existing = document.getElementById('empty');
+    if (existing) existing.remove();
+    clearBtn.style.display = 'inline-flex';
+
+    const row = document.createElement('div');
+    row.className = 'msg-row ' + role;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar ' + role;
+    avatar.textContent = role === 'user' ? '👤' : '🤖';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'bubble-wrap';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble ' + role;
+    bubble.textContent = content;
+
+    const ts = document.createElement('div');
+    ts.className = 'ts';
+    ts.textContent = fmtTime(new Date());
+
+    wrap.appendChild(bubble);
+    wrap.appendChild(ts);
+    row.appendChild(avatar);
+    row.appendChild(wrap);
+
+    messagesEl.insertBefore(row, typingEl);
+    scrollBottom();
+  }
+
+  async function sendMessage(text) {
+    const trimmed = text.trim();
+    if (!trimmed || loading) return;
+
+    loading = true;
+    sendBtn.disabled = true;
+    hideError();
+
+    history.push({ role: 'user', content: trimmed });
+    appendMessage('user', trimmed);
+    inputEl.value = '';
+    resizeInput();
+
+    typingEl.style.display = 'flex';
+    scrollBottom();
+
+    try {
+      const res = await fetch(AI_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: AI_MODEL, messages: history, stream: false }),
+      });
+
+      if (!res.ok) throw new Error('Server responded with ' + res.status + ': ' + res.statusText);
+
+      const data = await res.json();
+      const content =
+        data?.message?.content ||
+        data?.choices?.[0]?.message?.content ||
+        "I didn't get a response. Please try again.";
+
+      history.push({ role: 'assistant', content });
+      appendMessage('bot', content);
+    } catch (err) {
+      showError(err.message || 'Could not reach the AI. Make sure your local server is running.');
+    } finally {
+      typingEl.style.display = 'none';
+      loading = false;
+      sendBtn.disabled = !inputEl.value.trim();
+      scrollBottom();
+    }
+  }
+
+  function resizeInput() {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 140) + 'px';
+  }
+
+  inputEl.addEventListener('input', () => {
+    resizeInput();
+    sendBtn.disabled = !inputEl.value.trim() || loading;
+  });
+
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage(inputEl.value);
+    }
+  });
+
+  sendBtn.addEventListener('click', () => sendMessage(inputEl.value));
+
+  clearBtn.addEventListener('click', () => {
+    history = [];
+    const rows = messagesEl.querySelectorAll('.msg-row:not(#typing)');
+    rows.forEach(r => r.remove());
+
+    const empty = document.createElement('div');
+    empty.id = 'empty';
+    empty.innerHTML = `
+      <div class="empty-icon">☕</div>
+      <div class="empty-title">Good to see you</div>
+      <div class="empty-sub">Start a conversation. Everything stays just between us — nothing is saved when you leave.</div>
+      <div class="suggestions">
+        <button class="suggestion" onclick="useSuggestion(this)">Tell me something interesting about the universe 🌌</button>
+        <button class="suggestion" onclick="useSuggestion(this)">Help me write a short poem about autumn 🍂</button>
+        <button class="suggestion" onclick="useSuggestion(this)">What's a good recipe for a cozy evening? 🍵</button>
+        <button class="suggestion" onclick="useSuggestion(this)">Explain quantum computing simply 🔬</button>
+      </div>`;
+    messagesEl.insertBefore(empty, typingEl);
+    clearBtn.style.display = 'none';
+    hideError();
+  });
+
+  function useSuggestion(btn) {
+    sendMessage(btn.textContent);
+  }
+
+  document.getElementById('cfg-btn').addEventListener('click', () => {
+    document.getElementById('cfg-url').value   = AI_URL;
+    document.getElementById('cfg-model').value = AI_MODEL;
+    document.getElementById('modal-overlay').classList.add('open');
+  });
+
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+
+  function saveConfig() {
+    const url   = document.getElementById('cfg-url').value.trim();
+    const model = document.getElementById('cfg-model').value.trim();
+    if (url)   { AI_URL   = url;   localStorage.setItem('ai_url',   url);   }
+    if (model) { AI_MODEL = model; localStorage.setItem('ai_model', model); }
+    closeModal();
+  }
+
+  document.getElementById('modal-overlay').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeModal();
+  });
+</script>
+</body>
+</html>
